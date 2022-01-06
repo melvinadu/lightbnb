@@ -11,8 +11,6 @@ const pool = new Pool({
 
 /// Users
 
-
-
 /**
  * Get a single user from the database given their email.
  * @param {String} email The email of the user.
@@ -77,7 +75,7 @@ const addUser =  function(user) {
     VALUES ($1, $2, $3) 
     RETURNING *;`, 
     [user.name, user.email, user.password])
-    .then((result) => result.rows);
+    .then((result) => result.rows[0]);
 }
 exports.addUser = addUser;
 
@@ -89,7 +87,17 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  return pool
+    .query(`
+    SELECT properties.*, reservations.*, avg(property_reviews.rating) as average_rating
+    FROM reservations
+    JOIN properties ON reservations.property_id = properties.id
+    JOIN property_reviews ON property_reviews.property_id  = properties.id
+    WHERE reservations.guest_id= $1
+    GROUP BY reservations.id, properties.id
+    LIMIT $2;`, 
+    [guest_id, limit])
+    .then((result) => result.rows);
 }
 exports.getAllReservations = getAllReservations;
 
